@@ -1,26 +1,41 @@
 import Editor from "@monaco-editor/react";
 import { useEffect, useState } from "react";
-import { useEditorSocketStore } from "../../../store/editorSocketStore";
 import { useActiveFileTabStore } from "../../../store/activeFileTabStore";
+import { useEditorSocketStore } from "../../../store/editorSocketStore";
+import { extensionToFileType } from "../../../utils/extentionToFileType";
 
 const EditorComponent = () => {
   const [editorState, setEditorState] = useState({
     theme: null,
   });
 
-  const {editorSocket} = useEditorSocketStore()
+  let timerId = null
 
-  const {activeFileTab,setActiveFileTab} = useActiveFileTabStore()
+  const {activeFileTab} = useActiveFileTabStore()
+
+  const {editorSocket} = useEditorSocketStore()
 
   function handleEditorTheme(editor, monaco) {
     monaco.editor.defineTheme("dracula", editorState.theme);
     monaco.editor.setTheme("dracula");
   }
 
-  editorSocket?.on("readFileSuccess", (data) => {
-    console.log("data", data);
-    setActiveFileTab(data.path, data.data);
-  });
+  function handleChange(value){
+
+    if(timerId != null){
+      clearInterval(timerId)
+    }
+
+    timerId = setTimeout(()=>{
+
+      const editorContent = value
+      editorSocket.emit("writeFile", {
+        data: editorContent,
+        pathToFileOrFolder: activeFileTab?.path
+      })
+
+    },2000)
+  }
 
   useEffect(() => {
     fetch("/Dracula.json")
@@ -32,7 +47,7 @@ const EditorComponent = () => {
         }))
       );
 
-  }, [editorSocket, setActiveFileTab]);
+  }, []);
 
   return (
     <>
@@ -45,6 +60,8 @@ const EditorComponent = () => {
             fontSize: 18,
             fontFamily: "monospace",
           }}
+          language={extensionToFileType(activeFileTab?.extension)}
+          onChange={handleChange}
           value={activeFileTab?.value || '// Welcome to the playground'}
           onMount={handleEditorTheme}
         />

@@ -3,11 +3,18 @@ import { IoIosArrowDown } from "react-icons/io";
 import { IoIosArrowForward } from "react-icons/io";
 import { FileIcon } from "../../atoms/FileIcon/FileIcon";
 import { useEditorSocketStore } from "../../../store/editorSocketStore";
+import { useFileContextMenuStore } from "../../../store/fileContextMenuStore";
 
 export const TreeNode = ({ filefolderdata }) => {
   const [visibility, setVisibility] = useState({});
 
   const {editorSocket} = useEditorSocketStore()
+
+  const {setFile,
+    setIsOpen: setFileContextMenuIsOpen,
+    setX: setFileContextMenuX,
+    setY: setFileContextMenuY,
+   } = useFileContextMenuStore()
 
   function toggleVisibility(name) {
     setVisibility({
@@ -28,6 +35,15 @@ export const TreeNode = ({ filefolderdata }) => {
     })
   }
 
+  function handleContextMenuForFiles(e, path){
+    e.preventDefault()
+    console.log("Right clicked on", path, e)
+    setFile(path)
+    setFileContextMenuX(e.clientX)
+    setFileContextMenuY(e.clientY)
+    setFileContextMenuIsOpen(true)
+  }
+
   return (
     filefolderdata && (
       <div
@@ -45,8 +61,9 @@ export const TreeNode = ({ filefolderdata }) => {
               outline: "none",
               color: "white",
               backgroundColor: "transparent",
-              paddingTop: "15px",
+              padding: "15px",
               fontSize: "16px",
+              marginTop:"10px"
             }}
           >
             {visibility[filefolderdata.name] ? (
@@ -59,17 +76,21 @@ export const TreeNode = ({ filefolderdata }) => {
         ) : (
           <div style={{
             display: "flex",
-            alignItems:"center"
+            alignItems:"center",
+            justifyContent:"start",
           }}>
             <FileIcon extension={computeExtension(filefolderdata)}/>
             <p
               style={{
-                paddingTop: "5px",
+                paddingTop: "15px",
+                paddingBottom: "15px",
                 fontSize: "15px",
                 cursor: "pointer",
-                marginLeft: "5px",
+                marginLeft: "18px",
                 color: "white",
+                marginTop:"8px"
               }}
+              onContextMenu={(e)=> handleContextMenuForFiles(e, filefolderdata.path)}
               onDoubleClick={()=> handleDoubleClick(filefolderdata)}
             >
               {filefolderdata.name}
