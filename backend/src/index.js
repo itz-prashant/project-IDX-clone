@@ -69,14 +69,14 @@ terminalNameSpace.on("connection", (socket)=>{
 
     const projectId = socket.handshake.query['projectId']
 
-    socket.on("shell-input", (data)=>{
-        console.log("input recieved", data)
-        terminalNameSpace.emit("shell-output", data)
-    })
+    // socket.on("shell-input", (data)=>{
+    //     console.log("input recieved", data)
+    //     terminalNameSpace.emit("shell-output", data)
+    // })
 
-    socket.on("disconnect", ()=>{
-        console.log("terminal disconnected")
-    })
+    // socket.on("disconnect", ()=>{
+    //     console.log("terminal disconnected")
+    // })
 
      handleContainerCreate(projectId, socket);
 })
