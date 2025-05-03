@@ -2,18 +2,20 @@ import {Terminal} from '@xterm/xterm'
 import {FitAddon} from '@xterm/addon-fit'
 import "@xterm/xterm/css/xterm.css"
 import { useEffect, useRef } from 'react';
-import {io} from "socket.io-client"
-import { useParams } from 'react-router-dom';
+import {AttachAddon} from "@xterm/addon-attach"
+import { useTerminalSocketStore } from '../../../store/terminalSocketStore';
 
 const BrowserTerminal = () => {
 
   const terminalRef = useRef(null);
 
   const socket = useRef(null)
-  const {projectId: projectIdFromUrl} = useParams()
+
+const {terminalSocket} = useTerminalSocketStore()
 
   useEffect(()=>{
-    const term = new Terminal({
+    if (!terminalSocket) return;
+    const term = new Terminal({ // Created xterm object
       cursorBlink: true,
       theme:{
         background: "#282a37",
@@ -25,36 +27,32 @@ const BrowserTerminal = () => {
         yellow: "#f1fa8c",
         cyan: "#8be9fc"
       },
-      fontFamily: "Ubuntu Mono",
+      fontFamily: "Fira Code",
       fontSize: 16,
       convertEol: true // convert CRLF to LF
     })
 
     term.open(terminalRef.current)
-    let fitAddon = new FitAddon()
+    let fitAddon = new FitAddon() // Properly allign xterm in parent div
     term.loadAddon(fitAddon)
     fitAddon.fit()
 
-    socket.current = io(`${import.meta.env.VITE_BACKEND_URL}/terminal`, {
-      query:{
-        projectId: projectIdFromUrl,
+    
+      terminalSocket.onopen = ()=>{
+        const attachAddon = new AttachAddon(terminalSocket) // xterm jo browser me hai usko terminal(docker / local machine terminal) se attach kr deta hai
+        term.loadAddon(attachAddon);
+        socket.current = terminalSocket
       }
-    })
+  
 
-    socket.current.on("shell-output", (data)=>{
-      term.write(data)
-    })
-
-    term.onData((data)=>{
-      console.log(data)
-      socket.current.emit("shell-input", data)
-    })
-
-    return ()=>{
-      term.dispose();
-      socket.current.diconnect()
-    }
-  },[])
+      return () => {
+        term.dispose();
+        if (socket.current) {
+          socket.current.close(); // correct way to close a WebSocket
+        }
+      };
+      
+  },[terminalSocket])
 
   return (
     <div

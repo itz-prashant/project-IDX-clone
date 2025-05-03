@@ -6,7 +6,9 @@ import { PORT } from "./config/serverConfig.js"
 import apiRouter from './routes/index.js'
 import chokidar from "chokidar"
 import { handleEditorSocketEvents } from './socketHandler/editorHandlers.js'
-import { handleContainerCreate } from './containers/handleContainerCreate.js'
+import { handleContainerCreate, listContainer } from './containers/handleContainerCreate.js'
+import {WebSocketServer} from "ws"
+import { handleTerminalCreration } from './containers/handleTerminalCreration.js'
 
 const app = express();
 const server = createServer(app);
@@ -54,6 +56,11 @@ editorNameSpace.on("connection", (socket)=>{
         })
     }
 
+    socket.on("getPort",()=>{
+        console.log("Get port event recieved")
+        listContainer()
+    } )
+
     handleEditorSocketEvents(socket, editorNameSpace)
 
     socket.on("disconnect", async ()=>{
@@ -62,25 +69,38 @@ editorNameSpace.on("connection", (socket)=>{
     })
 })
 
-const terminalNameSpace = io.of('/terminal')
-
-terminalNameSpace.on("connection", (socket)=>{
-    console.log('terminal connected')
-
-    const projectId = socket.handshake.query['projectId']
-
-    // socket.on("shell-input", (data)=>{
-    //     console.log("input recieved", data)
-    //     terminalNameSpace.emit("shell-output", data)
-    // })
-
-    // socket.on("disconnect", ()=>{
-    //     console.log("terminal disconnected")
-    // })
-
-     handleContainerCreate(projectId, socket);
-})
-
 server.listen(PORT, ()=>{
     console.log(`Server is running on PORT:${PORT}`)
 });
+
+const webSocketForTerminal = new WebSocketServer({
+    noServer: true // we will handle upgrade event
+})
+
+webSocketForTerminal.on("connection", (ws, req, container)=>{
+    // console.log("terminal connected", ws, req, container)
+    handleTerminalCreration(container, ws)
+
+    ws.on("close", ()=>{
+        container.remove({force: true}, (err, data)=>{
+            if(err){
+                console.log("Error while removing container", err)
+            }
+            console.log("container removed", data)
+        })
+    })
+})
+
+server.on("upgrade", (req, tcp, head)=>{
+
+    const terminal = req.url.includes("/terminal")
+
+    if(terminal){
+        console.log("req url recieved",req.url)
+        const projectId = req.url.split("=")[1]
+        console.log(projectId)
+
+        handleContainerCreate(projectId, webSocketForTerminal, req, tcp, head)
+    }
+})
+
