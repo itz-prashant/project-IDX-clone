@@ -13,12 +13,28 @@ export const listContainer = async()=>{
 export const handleContainerCreate = async (projectId, terminalSocket, req, tcpSocket, head) => {
     console.log("Project id recieved for container create", projectId)
    try {
+
+    // Delete any existing container  running with same name
+    const existingContainer = await docker.listContainers({
+        all: true,
+        filters: { name: [projectId] }
+    })
+
+    if(existingContainer.length > 0){
+        console.log("container already exists, stopping and removing it")
+        const container = docker.getContainer(existingContainer[0].Id);
+        await container.remove({ force: true });
+    }
+
+    console.log("Creating a new container")
+
     const container = await docker.createContainer({
         Image: 'sandbox',
         AttachStdin: true,
         AttachStdout: true,
         AttachStderr: true,
         Cmd: ['/bin/bash'],
+        name: projectId,
         Tty: true,
         User: "sandbox",
         ExposedPorts:{
@@ -45,11 +61,27 @@ export const handleContainerCreate = async (projectId, terminalSocket, req, tcpS
 
     console.log("Container started")
 
-    terminalSocket.handleUpgrade(req, tcpSocket, head, (establishedWSConn)=>{
-        terminalSocket.emit("connection", establishedWSConn, req, container)
-    })
+    return container
 
    } catch (error) {
     console.log("Error while creating container", error)
    }
+}
+
+export async function getContainerPort(containerName) {
+    const container = await docker.listContainers({
+        name: containerName
+    })
+
+    if(container.length > 0 ){
+        const containerInfo = await docker.getContainer(container[0].Id).inspect()
+        console.log("Container info", containerInfo);
+        try {
+            return containerInfo?.NetworkSettings?.Ports["5173/tcp"][0].HostPort
+        } catch (error) {
+            console.log("port not present")
+            return undefined
+        }
+
+    }
 }

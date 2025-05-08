@@ -1,4 +1,5 @@
 import fs from "fs/promises"
+import { getContainerPort } from "../containers/handleContainerCreate.js"
 
 export const handleEditorSocketEvents = (socket, editorNameSpace)=>{
     socket.on("writeFile", async ({data, pathToFileOrFolder})=>{
@@ -93,5 +94,13 @@ export const handleEditorSocketEvents = (socket, editorNameSpace)=>{
                 data: "Error delete the folder"
             })
         }
+    })
+
+    socket.on("getPort", async ({containerName})=>{
+        const port = await getContainerPort(containerName);
+        console.log("port data", port)
+        socket.emit("getPortSuccess", {
+            port: port
+        })
     })
 }

@@ -1,4 +1,4 @@
-export const handleTerminalCreration = (container, ws)=>{
+export const handleTerminalCreration = (container, webSocketForTerminal)=>{
     container.exec({
         Cmd:["/bin/bash"],
         AttachStdin: true,
@@ -21,10 +21,10 @@ export const handleTerminalCreration = (container, ws)=>{
             }
 
             // Step 1: Stream process
-            processStreamOutput(stream, ws);
+            processStreamOutput(stream, webSocketForTerminal);
 
             // Step 2: Stream writing
-            ws.on("message", (data)=>{
+            webSocketForTerminal.on("message", (data)=>{
                 if(data === "getPort"){
                     container.inspect((err, data)=>{
                         const port = data.NetworkSettings;
@@ -38,7 +38,7 @@ export const handleTerminalCreration = (container, ws)=>{
     })
 }
 
-function processStreamOutput(stream, ws){
+function processStreamOutput(stream, webSocketForTerminal){
     let nextDataType = null; // stores the type of the next message
     let nextDataLength = null; // stores the length of the next message
     let buffer = Buffer.from("");
@@ -59,7 +59,7 @@ function processStreamOutput(stream, ws){
         }else{
             if(buffer.length >= nextDataLength){
                 const content = bufferSlicer(nextDataLength) // slice the buffer to get the message content
-                ws.send(content); // send the message to the client
+                webSocketForTerminal.send(content); // send the message to the client
                 nextDataType = null; // reset the type and length of the next message
                 nextDataLength = null;
                 processStreamData()
